@@ -1,0 +1,122 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Hello WebXR</title>
+    <style>
+        body {
+            margin: 0;
+            font-family: Arial, sans-serif;
+        }
+        #info {
+            position: absolute;
+            top: 10px;
+            left: 10px;
+            color: white;
+            background: rgba(0,0,0,0.5);
+            padding: 10px;
+            border-radius: 5px;
+            z-index: 100;
+        }
+    </style>
+</head>
+<body>
+    <div id="info">
+        <h3>WebXR Hello World</h3>
+        <p>Clique em "START AR" para começar</p>
+    </div>
+
+    <script type="module">
+        // Importar THREE.js localmente
+        import * as THREE from './libs/three.module.js';
+        import { ARButton } from './libs/ARButton.js';
+
+        let camera, scene, renderer;
+        let controller;
+
+        init();
+        animate();
+
+        function init() {
+            // Container
+            const container = document.createElement('div');
+            document.body.appendChild(container);
+
+            // Cena
+            scene = new THREE.Scene();
+
+            // Câmera
+            camera = new THREE.PerspectiveCamera( //modificação 3: mudei alguns números da camera. Isso deixou ela mais distante, tornando as modificações anteriores mais visiveis, incluindo o anel.
+                45,
+                window.innerWidth / window.innerHeight,
+                0.01,
+                200
+            );
+
+            // Luz
+            const light = new THREE.HemisphereLight(0xffffff, 0xbbbbff, 1);
+            light.position.set(0.5, 1, 0.25);
+            scene.add(light);
+
+            // Renderer
+            renderer = new THREE.WebGLRenderer({ antialias: true, alpha: true });
+            renderer.setPixelRatio(window.dpr);
+            renderer.setSize(window.innerWidth, window.innerHeight);
+            renderer.xr.enabled = true;
+            container.appendChild(renderer.domElement);
+
+            // Botão AR
+            document.body.appendChild(
+                ARButton.createButton(renderer, {
+                    requiredFeatures: ['hit-test']
+                })
+            );
+
+            // Criar um cubo de exemplo
+            const geometry = new THREE.CapsuleGeometry(-0.1, -0.1, 0.4, 8, 1 ); //Modificação 1: eu mudei a geometria do cubo inicial para uma de uma capsula, e fiz que a capsula se tornasse uma casinha 3D simples.
+            const material = new THREE.MeshBasicMaterial( { color: 0x0A0019 } ); //Continuação: tive que mudar tbm para um material basico, porque senão, não carregava. Mudei para um roxo negro.
+            const capsule = new THREE.Mesh(geometry, material);
+            capsule.position.set(0, 0, -0.5);
+            scene.add(capsule);
+
+            // Controller para interação
+            controller = renderer.xr.getController(0);
+            controller.addEventListener('select', onSelect);
+            scene.add(controller);
+
+            // Redimensionar
+            window.addEventListener('resize', onWindowResize);
+        }
+
+        function onSelect() {
+            // Adicionar um cubo na posição do controller
+            // Modificação 2: Mudei o cubo para um anel durante a seleção. Com isso, a casa fica circulada depois de um toque.
+            const geometry = new THREE.RingGeometry( 1, 5, 32 );
+            const material = new THREE.MeshBasicMaterial( { color: 0xfa2dc0, side: THREE.DoubleSide } );
+            const mesh = new THREE.Mesh( geometry, material );
+            scene.add( mesh );
+            // Eu também coloquei uma luz para acompanhar o anel, para não ficar igual, junto com a sua sombra.
+            const directionalLight = new THREE.DirectionalLight( 0xffffff, 0.5 );
+            const directionalLightShadow = new THREE.directionalLightShadow();
+            scene.add( directionalLight ); 
+            scene.add( directionalLightShadow );
+
+        }
+
+        function onWindowResize() {
+            camera.aspect = window.innerWidth / window.innerHeight;
+            camera.updateProjectionMatrix();
+            renderer.setSize(window.innerWidth, window.innerHeight);
+        }
+
+        function animate() {
+            renderer.setAnimationLoop(render);
+        }
+
+        function render() {
+            renderer.render(scene, camera);
+        }
+    </script>
+</body>
+</html>
